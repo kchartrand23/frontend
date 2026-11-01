@@ -46,6 +46,13 @@ export function parseDocumentItem(value: unknown): DocumentItem | null {
     typeof doc.retentionPolicy === "string" ? doc.retentionPolicy : "";
   const marketSegment =
     typeof doc.marketSegment === "string" ? doc.marketSegment : "";
+  const fileLocationRaw =
+    typeof doc.fileLocation === "string"
+      ? doc.fileLocation
+      : typeof doc.sharePointWebUrl === "string"
+        ? doc.sharePointWebUrl
+        : "";
+  const fileLocation = fileLocationRaw.trim();
   const fileSize = typeof doc.fileSize === "string" ? doc.fileSize : "";
   const tags = typeof doc.tags === "string" ? doc.tags : "";
   const versionCount =
@@ -91,6 +98,7 @@ export function parseDocumentItem(value: unknown): DocumentItem | null {
     retentionPolicy: retentionPolicy.slice(0, 120),
     versionCount,
     marketSegment: marketSegment.slice(0, 80),
+    fileLocation: fileLocation.slice(0, 500),
     fileSize: fileSize.slice(0, 40),
     tags: tags.slice(0, 500),
     versionHistory,

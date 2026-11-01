@@ -1,6 +1,10 @@
 import { DOCUMENT_METADATA_FILTER_FIELDS } from "@/lib/document-metadata-filter-fields";
 import type { DocumentItem } from "@/lib/mock-documents";
 import type { JobItem } from "@/lib/mock-jobs";
+import {
+  resolveDivisionDisplayName,
+  resolveRegionalMarketForDocument,
+} from "@/lib/regional-market";
 
 export const DEFAULT_DOCUMENT_STATUS = "Active";
 
@@ -33,9 +37,9 @@ function resolveMetadataValues(
     documentType: document.category,
     versionNumber: document.version,
     status: document.status?.trim() || DEFAULT_DOCUMENT_STATUS,
-    market: displayOrDash(document.market),
+    division: displayOrDash(resolveDivisionDisplayName(document)),
+    market: displayOrDash(resolveRegionalMarketForDocument(document)),
     branch: displayOrDash(document.branch),
-    division: displayOrDash(document.division),
     customerName: document.customer,
     customerCode: displayOrDash(document.customerCode),
     jobName: displayOrDash(document.jobName ?? job?.jobName),
@@ -75,10 +79,16 @@ export function getDocumentMetadataRows(
     value: values[field.id] ?? "—",
   }));
 
-  rows.push({
-    label: "File Size",
-    value: displayOrDash(document.fileSize),
-  });
+  rows.push(
+    {
+      label: "File Location",
+      value: displayOrDash(document.fileLocation),
+    },
+    {
+      label: "File Size",
+      value: displayOrDash(document.fileSize),
+    },
+  );
 
   return rows;
 }
@@ -90,9 +100,9 @@ export type UploadMetadataSnapshot = {
   documentType: string;
   versionNumber: string;
   documentStatus: string;
-  market: string;
   branch: string;
   division: string;
+  market: string;
   customer: string;
   customerCode: string;
   jobName: string;
@@ -134,9 +144,9 @@ export function getUploadReviewMetadataRows(
     documentType: snapshot.documentType,
     versionNumber: displayOrDash(snapshot.versionNumber),
     status: snapshot.documentStatus.trim() || DEFAULT_DOCUMENT_STATUS,
+    division: displayOrDash(snapshot.division),
     market: displayOrDash(snapshot.market),
     branch: displayOrDash(snapshot.branch),
-    division: displayOrDash(snapshot.division),
     customerName: displayOrDash(snapshot.customer),
     customerCode: displayOrDash(snapshot.customerCode),
     jobName: displayOrDash(snapshot.jobName),
@@ -170,6 +180,10 @@ export function getUploadReviewMetadataRows(
       label: field.label,
       value: values[field.id] ?? "—",
     })),
+    {
+      label: "File Location",
+      value: "—",
+    },
     {
       label: "File Size",
       value: formatBytesForDisplay(snapshot.sourceFileSizeBytes),

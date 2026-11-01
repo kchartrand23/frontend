@@ -28,6 +28,7 @@ export type DocumentItem = {
   retentionPolicy: string;
   versionCount: number;
   marketSegment: string;
+  fileLocation: string;
   fileSize: string;
   tags: string;
   versionHistory?: DocumentVersionEntry[];
@@ -73,7 +74,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Plan",
     dateLabel: "Aug 28",
     version: "v4",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Tampa Facility",
     location: "Tampa, FL",
     owner: "John Doe",
@@ -82,6 +83,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 4,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "4.1 MB",
     tags: "architectural, floor plan",
   },
@@ -93,7 +96,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Estimate",
     dateLabel: "Aug 27",
     version: "v2",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "North Port Facility",
     location: "Orlando, FL",
     owner: "Sarah Kim",
@@ -102,6 +105,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 2,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "1.2 MB",
     tags: "estimate, kitchen",
   },
@@ -113,7 +118,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Photo",
     dateLabel: "Jul 21",
     version: "v1",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Tampa Facility",
     location: "Tampa, FL",
     owner: "Mike Torres",
@@ -122,6 +127,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 1,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "3.6 MB",
     tags: "photo, framing",
   },
@@ -133,7 +140,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Plan",
     dateLabel: "Jun 22",
     version: "v1",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Tampa Facility",
     location: "Tampa, FL",
     owner: "Sarah Kim",
@@ -142,6 +149,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 1,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "2.1 MB",
     tags: "architectural, foundation",
   },
@@ -153,7 +162,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Plan",
     dateLabel: "Aug 28",
     version: "v2",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Tampa Facility",
     location: "Tampa, FL",
     owner: "John Doe",
@@ -162,6 +171,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 2,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "2.8 MB",
     tags: "architectural, elevation",
     versionHistory: [
@@ -191,7 +202,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Sales Order",
     dateLabel: "Sep 03",
     version: "v1",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Tampa Facility",
     location: "Tampa, FL",
     owner: "Sarah Kim",
@@ -200,6 +211,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 1,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "420 KB",
     tags: "sales order, cabinets",
   },
@@ -211,7 +224,7 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     category: "Specification",
     dateLabel: "Aug 24",
     version: "v3",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Jetport Facility",
     location: "Miami, FL",
     owner: "John Doe",
@@ -220,6 +233,8 @@ export const RECENT_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 3,
     marketSegment: "Commercial",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "1.9 MB",
     tags: "hvac, specification",
   },
@@ -234,7 +249,7 @@ export const RELATED_DOCUMENTS: DocumentItem[] = [
     category: "Estimate",
     dateLabel: "Aug 02",
     version: "v1",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "Tampa Facility",
     location: "Tampa, FL",
     owner: "Sarah Kim",
@@ -243,6 +258,8 @@ export const RELATED_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 1,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "890 KB",
     tags: "bid, exterior",
   },
@@ -254,7 +271,7 @@ export const RELATED_DOCUMENTS: DocumentItem[] = [
     category: "Quote",
     dateLabel: "Aug 21",
     version: "v2",
-    market: "Florida",
+    market: "Raymond Building Supply",
     branch: "North Port Facility",
     location: "Orlando, FL",
     owner: "Sarah Kim",
@@ -263,6 +280,8 @@ export const RELATED_DOCUMENTS: DocumentItem[] = [
     retentionPolicy: "Job Files — 7 Years",
     versionCount: 2,
     marketSegment: "Residential",
+    fileLocation:
+      "https://uslbm.sharepoint.com/sites/RBSCEDMTEST/Shared Documents",
     fileSize: "640 KB",
     tags: "quote, cabinets",
   },

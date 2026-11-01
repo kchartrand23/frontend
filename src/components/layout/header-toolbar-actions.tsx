@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { getCurrentUsername } from "@/lib/current-user";
+import { useCurrentUsername } from "@/lib/use-current-username";
 
 /** Re-enable when notifications are wired up. */
 const NOTIFICATIONS_ENABLED = false;
@@ -39,14 +39,15 @@ export function NotificationBell() {
 }
 
 export function UserAvatarButton() {
-  const username = getCurrentUsername();
+  const { username, loading } = useCurrentUsername();
+  const displayName = loading ? "Loading…" : username;
 
   return (
     <div className="group relative shrink-0">
       <button
         type="button"
         className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-amber-100 to-rose-200 ring-2 ring-white transition group-hover:ring-zinc-200"
-        aria-label={`Signed in as ${username}`}
+        aria-label={`Signed in as ${displayName}`}
       >
         <svg
           className="h-5 w-5 text-rose-800/60"
@@ -61,7 +62,7 @@ export function UserAvatarButton() {
         role="tooltip"
         className="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden whitespace-nowrap rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-800 shadow-md group-hover:block group-focus-within:block"
       >
-        {username}
+        {displayName}
       </div>
     </div>
   );

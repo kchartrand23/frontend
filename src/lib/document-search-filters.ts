@@ -1,6 +1,10 @@
 import { DOCUMENT_METADATA_FILTER_FIELDS } from "@/lib/document-metadata-filter-fields";
 import type { DocumentItem } from "@/lib/mock-documents";
 import type { JobItem } from "@/lib/mock-jobs";
+import {
+  resolveDivisionDisplayName,
+  resolveRegionalMarketForDocument,
+} from "@/lib/regional-market";
 
 export type DocumentMetadataFilters = Record<string, string>;
 
@@ -46,9 +50,9 @@ function resolveMetadataValuesForFilter(
     documentType: document.category,
     versionNumber: document.version,
     status: document.status?.trim() || "Active",
-    market: document.market,
+    division: resolveDivisionDisplayName(document),
+    market: resolveRegionalMarketForDocument(document),
     branch: document.branch,
-    division: document.division ?? "",
     customerName: document.customer,
     customerCode: document.customerCode ?? "",
     jobName: document.jobName ?? job?.jobName ?? "",

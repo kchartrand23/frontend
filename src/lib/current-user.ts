@@ -1,9 +1,8 @@
-const DEFAULT_USERNAME = "John Doe";
-const MAX_USERNAME_LENGTH = 120;
+import { sanitizeDisplayUsername } from "@/lib/username-format";
 
-/** Display name for the signed-in user until real auth is connected. */
+/** @deprecated Prefer useCurrentUsername() so the OS full name is resolved on the server. */
 export function getCurrentUsername(): string {
   const fromEnv = process.env.NEXT_PUBLIC_CURRENT_USERNAME?.trim();
-  if (!fromEnv) return DEFAULT_USERNAME;
-  return fromEnv.slice(0, MAX_USERNAME_LENGTH);
+  if (!fromEnv) return "User";
+  return sanitizeDisplayUsername(fromEnv);
 }

@@ -1,19 +1,4 @@
-/** File types aligned with upload-validation.ts */
-const PICKER_TYPES: FilePickerAcceptType[] = [
-  {
-    description: "Documents and images",
-    accept: {
-      "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-        ".xlsx",
-      ],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/png": [".png"],
-    },
-  },
-];
+import { UPLOAD_FILE_PICKER_ACCEPT_TYPES } from "@/lib/upload-allowed-file-types";
 
 type FilePickerAcceptType = {
   description: string;
@@ -47,7 +32,7 @@ export async function pickUploadFileWithSystemDialog(): Promise<File | null> {
   try {
     const handles = await showOpenFilePicker({
       multiple: false,
-      types: PICKER_TYPES,
+      types: [...UPLOAD_FILE_PICKER_ACCEPT_TYPES],
     });
     const handle = handles[0];
     if (!handle) return null;

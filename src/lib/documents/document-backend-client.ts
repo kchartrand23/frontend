@@ -48,6 +48,26 @@ export async function fetchCatalogFromBackend(): Promise<DocumentCatalog> {
   };
 }
 
+export async function createDocumentOnBackend(
+  formData: FormData,
+): Promise<DocumentItem> {
+  const response = await fetch(`${getBackendApiBaseUrl()}/documents`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  const body = (await response.json()) as { document?: unknown };
+  const document = parseDocumentItem(body.document);
+  if (!document) {
+    throw new Error("Unable to save document.");
+  }
+  return document;
+}
+
 export async function fetchDocumentFromBackend(
   id: string,
 ): Promise<DocumentItem | null> {

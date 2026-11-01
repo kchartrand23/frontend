@@ -1,6 +1,8 @@
 /**
- * When TESTONLY is true, the app serves mock document data.
- * When false, documents are loaded via the backend API (requires DMS_API_URL).
+ * When TESTONLY is true, the app uses in-memory mock documents and fallback
+ * market/branch lists (no MongoDB).
+ * When false, documents and market/branch options load via the backend API
+ * (requires DMS_API_URL in .env.local).
  */
 export function isTestOnly(): boolean {
   const raw = process.env.TESTONLY?.trim().toLowerCase();

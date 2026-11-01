@@ -10,13 +10,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useMarketBranchOptions } from "@/lib/business-context/use-market-branch-options";
+import { getRegionalMarketForDivisionId } from "@/lib/regional-market";
 import {
-  getBranchesForMarket,
-  isBranch,
-  isMarket,
-  MARKETS,
-  OWNERS,
-} from "@/lib/business-context-options";
+  createUploadAttachmentId,
+  UPLOAD_DOC_ORIGINATION_SYSTEM,
+} from "@/lib/upload-system-fields";
+import { OWNERS } from "@/lib/business-context-options";
 import {
   DEFAULT_DOCUMENT_STATUS,
   getUploadReviewMetadataRows,
@@ -28,6 +28,10 @@ import {
   isDocumentType,
   type DocumentType,
 } from "@/lib/document-types";
+import {
+  UPLOAD_ALLOWED_TYPES_LABEL,
+  UPLOAD_FILE_INPUT_ACCEPT,
+} from "@/lib/upload-allowed-file-types";
 import { pickUploadFileWithSystemDialog } from "@/lib/pick-upload-file";
 import {
   sanitizeTextInput,
@@ -37,6 +41,8 @@ import {
   validateTags,
   validateUploadFile,
 } from "@/lib/upload-validation";
+import { UploadTypeNotAllowedBanner } from "@/components/upload/upload-type-not-allowed-banner";
+import { saveDocumentWithFile } from "@/lib/save-document";
 
 /** Re-enable when upload queue UI is ready. */
 const UPLOAD_QUEUE_STEP_ENABLED = false;
@@ -100,6 +106,8 @@ const RETENTION_POLICIES = [
 
 const fieldClassName =
   "mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-[#5A4AF4]/40 focus:ring-2 focus:ring-[#5A4AF4]/20";
+
+const readOnlyFieldClassName = `${fieldClassName} cursor-default bg-zinc-100 text-zinc-700`;
 
 function FieldLabel({
   htmlFor,
@@ -315,6 +323,15 @@ function StepProgressRing({
 
 export function DocumentUploadWizard() {
   const router = useRouter();
+  const {
+    divisions,
+    loadingDivisions,
+    loadingBranchesFor,
+    error: divisionBranchLoadError,
+    getBranchesForDivisionId,
+    getDivisionById,
+    loadBranchesForDivisionId,
+  } = useMarketBranchOptions();
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const browseInFlightRef = useRef(false);
@@ -329,15 +346,26 @@ export function DocumentUploadWizard() {
   const [documentType, setDocumentType] = useState<DocumentType>(
     DEFAULT_UPLOAD_DOCUMENT_TYPE,
   );
-  const [market, setMarket] = useState("");
+  const [divisionId, setDivisionId] = useState("");
   const [branch, setBranch] = useState("");
 
-  const branchOptions = useMemo(() => {
-    if (isMarket(market)) {
-      return getBranchesForMarket(market);
-    }
-    return [];
-  }, [market]);
+  const division = useMemo(
+    () => getDivisionById(divisionId)?.name ?? "",
+    [getDivisionById, divisionId],
+  );
+
+  const regionalMarket = useMemo(
+    () => getRegionalMarketForDivisionId(divisionId),
+    [divisionId],
+  );
+
+  const branchOptions = useMemo(
+    () => getBranchesForDivisionId(divisionId),
+    [getBranchesForDivisionId, divisionId],
+  );
+
+  const branchesLoading =
+    Boolean(divisionId.trim()) && loadingBranchesFor === divisionId.trim();
   const [location, setLocation] = useState("");
   const [retentionPolicy, setRetentionPolicy] = useState<string>(
     RETENTION_POLICIES[0],
@@ -348,14 +376,12 @@ export function DocumentUploadWizard() {
   const [documentStatus, setDocumentStatus] = useState<string>(
     DEFAULT_DOCUMENT_STATUS,
   );
-  const [division, setDivision] = useState("");
   const [customerCode, setCustomerCode] = useState("");
   const [lotNumber, setLotNumber] = useState("");
   const [communityName, setCommunityName] = useState("");
   const [jobAddress, setJobAddress] = useState("");
   const [modelName, setModelName] = useState("");
   const [attachmentId, setAttachmentId] = useState("");
-  const [docOriginationSystem, setDocOriginationSystem] = useState("");
   const [component, setComponent] = useState("");
   const [productSku, setProductSku] = useState("");
   const [orderDeliveryDate, setOrderDeliveryDate] = useState("");
@@ -366,17 +392,27 @@ export function DocumentUploadWizard() {
   const [documentNumber, setDocumentNumber] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [typeNotAllowed, setTypeNotAllowed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const acceptFile = useCallback((file: File | undefined): boolean => {
     if (!file) return false;
     const result = validateUploadFile(file);
     if (!result.ok) {
       setSelectedFile(null);
-      setFileError(result.message);
+      if (result.code === "TYPE_NOT_ALLOWED") {
+        setTypeNotAllowed(true);
+        setFileError(null);
+      } else {
+        setTypeNotAllowed(false);
+        setFileError(result.message);
+      }
       return false;
     }
     setFileError(null);
+    setTypeNotAllowed(false);
     setSelectedFile(file);
+    setAttachmentId(createUploadAttachmentId());
     setDocumentType(inferUploadDocumentTypeFromFileName(file.name));
     if (!title.trim()) {
       setTitle(sanitizeTextInput(file.name.replace(/\.[^.]+$/, ""), 200));
@@ -404,6 +440,7 @@ export function DocumentUploadWizard() {
     if (browseInFlightRef.current) return;
     browseInFlightRef.current = true;
     setStepError(null);
+    setTypeNotAllowed(false);
 
     try {
       const hasSystemPicker =
@@ -484,7 +521,6 @@ export function DocumentUploadWizard() {
       validateRequiredText(customer, "Customer name", 120),
       validateOptionalText(location, 120),
       validateOptionalText(jobAddress, 200),
-      validateOptionalText(division, 120),
       validateOptionalText(customerCode, 40),
       validateTags(tags),
     ];
@@ -498,7 +534,7 @@ export function DocumentUploadWizard() {
     return null;
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setStepError(null);
     if (step === 1) {
       if (!selectedFile) {
@@ -529,7 +565,64 @@ export function DocumentUploadWizard() {
       }
     }
     if (step === TOTAL_STEPS) {
-      router.push("/?upload=success");
+      if (!selectedFile) {
+        setStepError("Select a file to continue.");
+        return;
+      }
+      const fileResult = validateUploadFile(selectedFile);
+      if (!fileResult.ok) {
+        setStepError(fileResult.message);
+        return;
+      }
+      const detailsError = validateDocumentDetailsStep();
+      if (detailsError) {
+        setStepError(detailsError);
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        await saveDocumentWithFile(selectedFile, {
+          title,
+          documentType,
+          jobId,
+          jobName,
+          customer,
+          market: regionalMarket,
+          branch,
+          location,
+          retentionPolicy,
+          owner,
+          tags,
+          versionNumber,
+          documentStatus,
+          division,
+          customerCode,
+          lotNumber,
+          communityName,
+          jobAddress,
+          modelName,
+          attachmentId,
+          docOriginationSystem: UPLOAD_DOC_ORIGINATION_SYSTEM,
+          component,
+          productSku,
+          orderDeliveryDate,
+          insideSalesRep,
+          outsideSalesRep,
+          takenBy,
+          vendorName,
+          documentNumber,
+        });
+        router.push("/?upload=success");
+      } catch (error) {
+        setStepError(
+          error instanceof Error && error.message.trim()
+            ? error.message.trim()
+            : "Unable to save document.",
+        );
+      } finally {
+        setIsSaving(false);
+      }
       return;
     }
     setStep((current) => getNextWizardStep(current));
@@ -547,13 +640,16 @@ export function DocumentUploadWizard() {
   const cancelButtonClassName =
     "inline-flex items-center justify-center rounded-lg border border-sky-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#2563eb] transition hover:bg-sky-50";
 
-  const continueEnabled = canContinue();
+  const continueEnabled = canContinue() && !isSaving;
   const visibleSteps = getVisibleSteps();
   const displayStep = getDisplayStepIndex(step);
 
-  const handleMarketChange = (nextMarket: string) => {
-    setMarket(nextMarket);
+  const handleDivisionChange = (nextDivisionId: string) => {
+    setDivisionId(nextDivisionId);
     setBranch("");
+    if (nextDivisionId.trim()) {
+      void loadBranchesForDivisionId(nextDivisionId);
+    }
   };
 
   const reviewMetadataRows = useMemo(
@@ -565,9 +661,9 @@ export function DocumentUploadWizard() {
         documentType,
         versionNumber,
         documentStatus,
-        market,
-        branch,
         division,
+        market: regionalMarket,
+        branch,
         customer,
         customerCode,
         jobName,
@@ -577,7 +673,7 @@ export function DocumentUploadWizard() {
         jobAddress,
         modelName,
         attachmentId,
-        docOriginationSystem,
+        docOriginationSystem: UPLOAD_DOC_ORIGINATION_SYSTEM,
         component,
         productSku,
         orderDeliveryDate,
@@ -597,9 +693,9 @@ export function DocumentUploadWizard() {
       documentType,
       versionNumber,
       documentStatus,
-      market,
-      branch,
       division,
+      regionalMarket,
+      branch,
       customer,
       customerCode,
       jobName,
@@ -609,7 +705,6 @@ export function DocumentUploadWizard() {
       jobAddress,
       modelName,
       attachmentId,
-      docOriginationSystem,
       component,
       productSku,
       orderDeliveryDate,
@@ -690,7 +785,7 @@ export function DocumentUploadWizard() {
               type="file"
               tabIndex={-1}
               className="hidden"
-              accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              accept={UPLOAD_FILE_INPUT_ACCEPT}
               onChange={onFileInputChange}
             />
             {selectedFile && !fileError ? (
@@ -700,6 +795,7 @@ export function DocumentUploadWizard() {
                   setStepError(null);
                   setSelectedFile(null);
                   setFileError(null);
+                  setTypeNotAllowed(false);
                   if (fileInputRef.current) {
                     fileInputRef.current.value = "";
                   }
@@ -744,12 +840,12 @@ export function DocumentUploadWizard() {
                     </span>
                   </span>
                 </button>
-                <span className="mt-4 text-xs text-zinc-400">
-                  (PDF, DOCX, XLSX, JPG, PNG) • (Max 100 MB)
+                <span className="mt-4 max-w-lg text-center text-xs leading-relaxed text-zinc-400">
+                  ({UPLOAD_ALLOWED_TYPES_LABEL}) • (Max 100 MB)
                 </span>
               </div>
             )}
-            {fileError && (
+            {fileError && !typeNotAllowed && (
               <p className="mt-2 text-sm text-red-600" role="alert">
                 {fileError}
               </p>
@@ -844,63 +940,90 @@ export function DocumentUploadWizard() {
                   ))}
                 </select>
               </div>
-            </DetailSection>
-
-            <DetailSection title="Organization">
               <div>
-                <FieldLabel htmlFor="market">Market</FieldLabel>
+                <FieldLabel htmlFor="retention-policy">Retention Policy</FieldLabel>
                 <select
-                  id="market"
-                  value={market}
-                  onChange={(e) => handleMarketChange(e.target.value)}
+                  id="retention-policy"
+                  value={retentionPolicy}
+                  onChange={(e) => setRetentionPolicy(e.target.value)}
                   className={fieldClassName}
                 >
-                  <option value="">Select market</option>
-                  {MARKETS.map((option) => (
+                  {RETENTION_POLICIES.map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
                   ))}
                 </select>
               </div>
+            </DetailSection>
+
+            <DetailSection title="Organization">
+              <div>
+                <FieldLabel htmlFor="division">Division</FieldLabel>
+                <select
+                  id="division"
+                  value={divisionId}
+                  onChange={(e) => handleDivisionChange(e.target.value)}
+                  className={fieldClassName}
+                  disabled={loadingDivisions}
+                >
+                  <option value="">
+                    {loadingDivisions
+                      ? "Loading divisions…"
+                      : "Select division"}
+                  </option>
+                  {divisions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel htmlFor="market">Market</FieldLabel>
+                <input
+                  id="market"
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={regionalMarket || "—"}
+                  className={readOnlyFieldClassName}
+                  aria-readonly="true"
+                />
+              </div>
               <div>
                 <FieldLabel htmlFor="branch">Branch</FieldLabel>
                 <select
                   id="branch"
-                  value={isBranch(branch) ? branch : ""}
+                  value={branch}
                   onChange={(e) => {
                     const next = e.target.value;
                     if (next === "") {
                       setBranch("");
                       return;
                     }
-                    if (isBranch(next)) {
+                    if (
+                      branchOptions.some((option) => option.name === next)
+                    ) {
                       setBranch(next);
                     }
                   }}
                   className={fieldClassName}
-                  disabled={!isMarket(market)}
+                  disabled={!divisionId.trim() || branchesLoading}
                 >
                   <option value="">
-                    {isMarket(market) ? "Select branch" : "Select market first"}
+                    {!divisionId.trim()
+                      ? "Select division first"
+                      : branchesLoading
+                        ? "Loading branches…"
+                        : "Select branch"}
                   </option>
                   {branchOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                    <option key={option.id} value={option.name}>
+                      {option.name}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="md:col-span-2">
-                <FieldLabel htmlFor="division">Division</FieldLabel>
-                <input
-                  id="division"
-                  type="text"
-                  maxLength={120}
-                  value={division}
-                  onChange={(e) => setDivision(e.target.value.slice(0, 120))}
-                  className={fieldClassName}
-                />
               </div>
             </DetailSection>
 
@@ -956,6 +1079,17 @@ export function DocumentUploadWizard() {
                   className={fieldClassName}
                 />
               </div>
+              <div className="md:col-span-2">
+                <FieldLabel htmlFor="job-address">Job Address</FieldLabel>
+                <input
+                  id="job-address"
+                  type="text"
+                  maxLength={200}
+                  value={jobAddress}
+                  onChange={(e) => setJobAddress(e.target.value.slice(0, 200))}
+                  className={fieldClassName}
+                />
+              </div>
               <div>
                 <FieldLabel htmlFor="lot-number">Lot Number</FieldLabel>
                 <input
@@ -980,17 +1114,6 @@ export function DocumentUploadWizard() {
                   className={fieldClassName}
                 />
               </div>
-              <div className="md:col-span-2">
-                <FieldLabel htmlFor="job-address">Job Address</FieldLabel>
-                <input
-                  id="job-address"
-                  type="text"
-                  maxLength={200}
-                  value={jobAddress}
-                  onChange={(e) => setJobAddress(e.target.value.slice(0, 200))}
-                  className={fieldClassName}
-                />
-              </div>
               <div>
                 <FieldLabel htmlFor="model-name">Model Name</FieldLabel>
                 <input
@@ -1003,27 +1126,31 @@ export function DocumentUploadWizard() {
                 />
               </div>
               <div>
-                <FieldLabel htmlFor="attachment-id">Attachment ID</FieldLabel>
+                <FieldLabel htmlFor="outside-sales-rep">
+                  Outside Sales Rep
+                </FieldLabel>
                 <input
-                  id="attachment-id"
+                  id="outside-sales-rep"
                   type="text"
-                  maxLength={80}
-                  value={attachmentId}
-                  onChange={(e) => setAttachmentId(e.target.value.slice(0, 80))}
+                  maxLength={120}
+                  value={outsideSalesRep}
+                  onChange={(e) =>
+                    setOutsideSalesRep(e.target.value.slice(0, 120))
+                  }
                   className={fieldClassName}
                 />
               </div>
-              <div className="md:col-span-2">
-                <FieldLabel htmlFor="doc-origination">
-                  Document Origination System
+              <div>
+                <FieldLabel htmlFor="inside-sales-rep">
+                  Inside Sales Rep
                 </FieldLabel>
                 <input
-                  id="doc-origination"
+                  id="inside-sales-rep"
                   type="text"
                   maxLength={120}
-                  value={docOriginationSystem}
+                  value={insideSalesRep}
                   onChange={(e) =>
-                    setDocOriginationSystem(e.target.value.slice(0, 120))
+                    setInsideSalesRep(e.target.value.slice(0, 120))
                   }
                   className={fieldClassName}
                 />
@@ -1062,36 +1189,6 @@ export function DocumentUploadWizard() {
                   type="date"
                   value={orderDeliveryDate}
                   onChange={(e) => setOrderDeliveryDate(e.target.value)}
-                  className={fieldClassName}
-                />
-              </div>
-              <div>
-                <FieldLabel htmlFor="inside-sales-rep">
-                  Inside Sales Rep
-                </FieldLabel>
-                <input
-                  id="inside-sales-rep"
-                  type="text"
-                  maxLength={120}
-                  value={insideSalesRep}
-                  onChange={(e) =>
-                    setInsideSalesRep(e.target.value.slice(0, 120))
-                  }
-                  className={fieldClassName}
-                />
-              </div>
-              <div>
-                <FieldLabel htmlFor="outside-sales-rep">
-                  Outside Sales Rep
-                </FieldLabel>
-                <input
-                  id="outside-sales-rep"
-                  type="text"
-                  maxLength={120}
-                  value={outsideSalesRep}
-                  onChange={(e) =>
-                    setOutsideSalesRep(e.target.value.slice(0, 120))
-                  }
                   className={fieldClassName}
                 />
               </div>
@@ -1149,19 +1246,30 @@ export function DocumentUploadWizard() {
                 </select>
               </div>
               <div>
-                <FieldLabel htmlFor="retention-policy">Retention Policy</FieldLabel>
-                <select
-                  id="retention-policy"
-                  value={retentionPolicy}
-                  onChange={(e) => setRetentionPolicy(e.target.value)}
-                  className={fieldClassName}
-                >
-                  {RETENTION_POLICIES.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                <FieldLabel htmlFor="attachment-id">Attachment ID</FieldLabel>
+                <input
+                  id="attachment-id"
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={attachmentId || "—"}
+                  className={readOnlyFieldClassName}
+                  aria-readonly="true"
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="doc-origination">
+                  Document Origination System
+                </FieldLabel>
+                <input
+                  id="doc-origination"
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={UPLOAD_DOC_ORIGINATION_SYSTEM}
+                  className={readOnlyFieldClassName}
+                  aria-readonly="true"
+                />
               </div>
               <div className="md:col-span-2">
                 <FieldLabel htmlFor="tags">Tags</FieldLabel>
@@ -1222,9 +1330,9 @@ export function DocumentUploadWizard() {
           </div>
         )}
 
-        {stepError && (
+        {(stepError || divisionBranchLoadError) && (
           <p className="mt-4 text-sm text-red-600" role="alert">
-            {stepError}
+            {stepError ?? divisionBranchLoadError}
           </p>
         )}
 
@@ -1272,10 +1380,20 @@ export function DocumentUploadWizard() {
                   : "cursor-not-allowed bg-zinc-200 text-zinc-400"
               }`}
             >
-              {step === TOTAL_STEPS ? "Save document" : "Next"}
+              {isSaving
+                ? "Saving…"
+                : step === TOTAL_STEPS
+                  ? "Save document"
+                  : "Next"}
             </button>
           </div>
         </div>
+
+        {step === 1 && typeNotAllowed && (
+          <div className="mt-6 flex justify-center pb-2">
+            <UploadTypeNotAllowedBanner />
+          </div>
+        )}
       </main>
     </div>
   );

@@ -1,55 +1,67 @@
-const ALLOWED_EXTENSIONS = new Set([
-  "pdf",
-  "docx",
-  "xlsx",
-  "jpg",
-  "jpeg",
-  "png",
-]);
-
-const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "image/jpeg",
-  "image/png",
-]);
+import {
+  isAllowedUploadFile,
+  isAllowedUploadFileExtension,
+  isAllowedUploadMimeType,
+  UPLOAD_ALLOWED_TYPES_LABEL,
+  uploadFileExtension,
+} from "@/lib/upload-allowed-file-types";
 
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
+export type FileValidationErrorCode =
+  | "TYPE_NOT_ALLOWED"
+  | "EMPTY_FILE"
+  | "FILE_TOO_LARGE"
+  | "INVALID_NAME";
+
 export type FileValidationResult =
   | { ok: true }
-  | { ok: false; message: string };
-
-function extensionOf(name: string): string {
-  const parts = name.split(".");
-  if (parts.length < 2) return "";
-  return parts[parts.length - 1]!.toLowerCase();
-}
+  | { ok: false; code: FileValidationErrorCode; message: string };
 
 export function validateUploadFile(file: File): FileValidationResult {
   if (!file.name.trim()) {
-    return { ok: false, message: "File name is required." };
-  }
-
-  const ext = extensionOf(file.name);
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
     return {
       ok: false,
-      message: "Allowed types: PDF, DOCX, XLSX, JPG, PNG.",
+      code: "INVALID_NAME",
+      message: "File name is required.",
     };
   }
 
-  if (file.type && !ALLOWED_MIME_TYPES.has(file.type)) {
-    return { ok: false, message: "File type is not allowed." };
+  const ext = uploadFileExtension(file.name);
+  if (!isAllowedUploadFileExtension(ext)) {
+    return {
+      ok: false,
+      code: "TYPE_NOT_ALLOWED",
+      message: "Document Type is not allowed",
+    };
+  }
+
+  if (file.type && !isAllowedUploadMimeType(file.type)) {
+    return {
+      ok: false,
+      code: "TYPE_NOT_ALLOWED",
+      message: "Document Type is not allowed",
+    };
+  }
+
+  if (!isAllowedUploadFile(file)) {
+    return {
+      ok: false,
+      code: "TYPE_NOT_ALLOWED",
+      message: "Document Type is not allowed",
+    };
   }
 
   if (file.size <= 0) {
-    return { ok: false, message: "File is empty." };
+    return { ok: false, code: "EMPTY_FILE", message: "File is empty." };
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { ok: false, message: "File must be 100 MB or smaller." };
+    return {
+      ok: false,
+      code: "FILE_TOO_LARGE",
+      message: "File must be 100 MB or smaller.",
+    };
   }
 
   return { ok: true };
@@ -62,10 +74,14 @@ export function sanitizeTextInput(value: string, maxLength: number): string {
 export function validateJobId(value: string): FileValidationResult {
   const trimmed = value.trim();
   if (!trimmed) {
-    return { ok: false, message: "Job ID is required." };
+    return { ok: false, code: "INVALID_NAME", message: "Job ID is required." };
   }
   if (!/^\d{1,10}$/.test(trimmed)) {
-    return { ok: false, message: "Job ID must be numeric (up to 10 digits)." };
+    return {
+      ok: false,
+      code: "INVALID_NAME",
+      message: "Job ID must be numeric (up to 10 digits).",
+    };
   }
   return { ok: true };
 }
@@ -77,7 +93,11 @@ export function validateRequiredText(
 ): FileValidationResult {
   const trimmed = sanitizeTextInput(value, maxLength);
   if (!trimmed) {
-    return { ok: false, message: `${label} is required.` };
+    return {
+      ok: false,
+      code: "INVALID_NAME",
+      message: `${label} is required.`,
+    };
   }
   return { ok: true };
 }
@@ -87,7 +107,11 @@ export function validateOptionalText(
   maxLength: number,
 ): FileValidationResult {
   if (value.length > maxLength) {
-    return { ok: false, message: `Must be ${maxLength} characters or fewer.` };
+    return {
+      ok: false,
+      code: "INVALID_NAME",
+      message: `Must be ${maxLength} characters or fewer.`,
+    };
   }
   return { ok: true };
 }
@@ -96,13 +120,20 @@ export function validateTags(value: string): FileValidationResult {
   const trimmed = value.trim();
   if (!trimmed) return { ok: true };
   if (trimmed.length > 500) {
-    return { ok: false, message: "Tags must be 500 characters or fewer." };
+    return {
+      ok: false,
+      code: "INVALID_NAME",
+      message: "Tags must be 500 characters or fewer.",
+    };
   }
   if (!/^[\w\s,.\-/#&]+$/iu.test(trimmed)) {
     return {
       ok: false,
+      code: "INVALID_NAME",
       message: "Tags may only contain letters, numbers, spaces, and commas.",
     };
   }
   return { ok: true };
 }
+
+export { UPLOAD_ALLOWED_TYPES_LABEL };
