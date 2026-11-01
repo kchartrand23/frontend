@@ -2,7 +2,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+From the repository root, use the `frontend` app (this folder):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Or run the development server from this directory:
 
 ```bash
 npm run dev
@@ -16,7 +24,9 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The dev and production scripts bind to **127.0.0.1** only (not `0.0.0.0`), so port 3000 is reachable from this machine’s loopback interface, not from other devices on the network.
+
+You can start editing the landing page in `src/app/page.tsx`. Connection settings for MongoDB and Azure Blob live in `frontend/.env.local` (see `src/lib/db.ts` and `src/lib/azure-blob.ts`).
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
